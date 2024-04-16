@@ -15,6 +15,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.slf4j.Logger;
@@ -82,8 +83,8 @@ public class IndexerThread implements Runnable {
                     switch (elementName) {
                     case "nct_id" -> nctId = reader.getElementText();
                     case "gender" -> gender = reader.getElementText();
-                    case "minimum_age" -> minAge = reader.getElementText();
-                    case "maximum_age" -> maxAge = reader.getElementText();
+                    case "minimum_age" -> minAge = parseAge(reader.getElementText());
+                    case "maximum_age" -> maxAge = parseAge(reader.getElementText());
                     case "healthy_volunteers" -> healthyVolunteers = reader.getElementText();
                     case "criteria" -> isCriteria = true;
                     case "textblock" -> {
@@ -111,7 +112,6 @@ public class IndexerThread implements Runnable {
     private void indexTrial(final Trial trial, final IndexWriter writer) {
 
         if (trial != null) {
-            logger.info("Indexing trial '{}'", trial.getNctId());
             final Document doc = createDocument(trial);
 
             try {
@@ -119,9 +119,6 @@ public class IndexerThread implements Runnable {
             } catch (final IOException e) {
                 logger.error("Error indexing trial - {}", e.getMessage());
             }
-
-            logger.info("Trial '{}' indexed", trial.getNctId());
-
         } else {
             logger.error("Error indexing trial - trial is null");
         }
@@ -137,12 +134,22 @@ public class IndexerThread implements Runnable {
         criteriaField.setStored(true);
 
         doc.add(new KeywordField("nct_id", trial.getNctId(), Field.Store.YES));
-        doc.add(new Field("criteria", trial.getCriteria(), criteriaField));
-        doc.add(new StringField("gender", trial.getGender(), Field.Store.YES));
-        doc.add(new StringField("min_age", trial.getMinAge(), Field.Store.YES));
-        doc.add(new StringField("max_age", trial.getMaxAge(), Field.Store.YES));
-        doc.add(new StringField("healthy_volunteers", trial.getHealthyVolunteers(), Field.Store.YES));
+        doc.add(new TextField("criteria", emptyIfNull(trial.getCriteria()), Field.Store.NO));
+        doc.add(new StringField("gender", emptyIfNull(trial.getGender()), Field.Store.NO));
+        doc.add(new StringField("min_age", emptyIfNull(trial.getMinAge()), Field.Store.NO));
+        doc.add(new StringField("max_age", emptyIfNull(trial.getMaxAge()), Field.Store.NO));
+        doc.add(new StringField("healthy_volunteers", emptyIfNull(trial.getHealthyVolunteers()), Field.Store.NO));
+        doc.add(new TextField("contents", trial.toString(), Field.Store.YES));
 
         return doc;
+    }
+
+    private String parseAge(final String age) {
+        final String[] numbers = age.split("\\D+");
+        return numbers.length == 0 ? null : numbers[0];
+    }
+
+    private String emptyIfNull(final String str) {
+        return str == null ? "" : str;
     }
 }
