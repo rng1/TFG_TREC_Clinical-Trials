@@ -126,14 +126,13 @@ public class IndexerThread implements Runnable {
 
         final Document doc = new Document();
 
-        // TODO: revisar campos
         doc.add(new KeywordField("nct_id", trial.getNctId(), Field.Store.YES));
         doc.add(new TextField("criteria", emptyIfNull(trial.getCriteria()), Field.Store.NO));
-        doc.add(new StringField("gender", emptyIfNull(trial.getGender()), Field.Store.NO));
-        doc.add(new StringField("min_age", emptyIfNull(trial.getMinAge()), Field.Store.NO));
-        doc.add(new StringField("max_age", emptyIfNull(trial.getMaxAge()), Field.Store.NO));
+        doc.add(new StringField("gender", emptyIfNull(trial.getGender()), Field.Store.YES));
+        doc.add(new StringField("min_age", emptyIfNull(trial.getMinAge()), Field.Store.YES));
+        doc.add(new StringField("max_age", emptyIfNull(trial.getMaxAge()), Field.Store.YES));
         doc.add(new StringField("healthy_volunteers", emptyIfNull(trial.getHealthyVolunteers()), Field.Store.NO));
-        doc.add(new TextField("contents", trial.toString(), Field.Store.YES));
+        doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
 
         return doc;
     }

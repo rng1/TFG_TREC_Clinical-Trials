@@ -2,37 +2,33 @@ package es.udc.fi.tfg.eval.metrics;
 
 public class MeanMetrics {
 
-    private double sumOfPrecision = 0.0;
-    private double sumOfRecall = 0.0;
-    private double sumOfAveragePrecision = 0.0;
-    private double sumOfReciprocalRank = 0.0;
-    private int numberOfMetrics = 0;
+    private double sumOfP = 0.0;
+    private double sumOfRR = 0.0;
+    private double sumOfnDCG = 0.0;
+    private int totalMetrics = 0;
 
-    public void updateMetrics(final double precision, final double recall, final double averagePrecision,
-            final double reciprocalRank) {
-
-        if (precision != 0 || recall != 0 || averagePrecision != 0 || reciprocalRank != 0) {
-            sumOfPrecision += precision;
-            sumOfRecall += recall;
-            sumOfAveragePrecision += averagePrecision;
-            sumOfReciprocalRank += reciprocalRank;
-            numberOfMetrics++;
+    public void updateMetrics(final double p, final double rr, final double ndcg) {
+        sumOfP += p;
+        sumOfRR += rr;
+        // if ndcg is not NaN, sum it
+        if (!Double.isNaN(ndcg)) {
+            sumOfnDCG += ndcg;
         }
+        totalMetrics++;
     }
 
-    public double getMeanPrecision() {
-        return numberOfMetrics == 0 ? 0 : sumOfPrecision / numberOfMetrics;
+    // Mean Precision
+    public double getMP() {
+        return totalMetrics == 0 ? 0 : sumOfP / totalMetrics;
     }
 
-    public double getMeanRecall() {
-        return numberOfMetrics == 0 ? 0 : sumOfRecall / numberOfMetrics;
+    // Mean Reciprocal Rank
+    public double getMRR() {
+        return totalMetrics == 0 ? 0 : sumOfRR / totalMetrics;
     }
 
-    public double getMeanAveragePrecision() {
-        return numberOfMetrics == 0 ? 0 : sumOfAveragePrecision / numberOfMetrics;
-    }
-
-    public double getMeanReciprocalRank() {
-        return numberOfMetrics == 0 ? 0 : sumOfReciprocalRank / numberOfMetrics;
+    // Mean Normalized Discounted Cumulative Gain
+    public double getMnDCG() {
+        return totalMetrics == 0 ? 0 : sumOfnDCG / totalMetrics;
     }
 }

@@ -53,17 +53,19 @@ public class SearchEvalTrecClinicalTrials {
                 logger.info("Processing topic {}", topic.getId());
 
                 final Map<String, Integer> innerMap = qrels.get(topic.getId());
-                final long totalRelevant = innerMap.values().stream().filter(e -> e != 0).count();
+                // final long totalRelevant = innerMap.values().stream().filter(e -> e == 2).count();
 
                 final Query query = parser.parse(QueryParser.escape(topic.getDescription()));
                 final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
-                final int retrieved = (int) hits.totalHits.value;
                 final StoredFields storedFields = searcher.storedFields();
 
-                // Initialize the metrics calculator for the current query.
-                final TopicMetrics topicMetrics = new TopicMetrics(retrieved, totalRelevant);
+                final int retrieved = (int) hits.totalHits.value;
+                final int cut = Math.min(retrieved, params.getCut());
 
-                for (int i = 0; i < Math.min(retrieved, params.getCut()); i++) {
+                // Initialize the metrics calculator for the current query.
+                final TopicMetrics topicMetrics = new TopicMetrics();
+
+                for (int i = 0; i < cut; i++) {
 
                     final ScoreDoc hit = hits.scoreDocs[i];
                     final String docId = storedFields.document(hit.doc).get("nct_id");
@@ -75,22 +77,20 @@ public class SearchEvalTrecClinicalTrials {
                             docId, hit.score);
                 }
 
-                final double precision = topicMetrics.getPrecision(params.getCut());
-                final double recall = topicMetrics.getRecall();
-                final double averagePrecision = topicMetrics.getAveragePrecision();
-                final double reciprocalRank = topicMetrics.getReciprocalRank();
+                final double p = topicMetrics.getP(cut);
+                final double rr = topicMetrics.getRR();
+                final double dcg = topicMetrics.getDCG(cut);
+                final double idcg = topicMetrics.getIDCG(cut);
+                final double ndcg = (dcg == 0) ? 0 : dcg / idcg;
 
-                meanMetrics.updateMetrics(precision, recall, averagePrecision, reciprocalRank);
+                meanMetrics.updateMetrics(p, rr, ndcg);
 
-                logger.info(
-                        "Topic {} - Precision: {}, Recall: {}, Average Precision: {}, Reciprocal Rank: {}",
-                        topic.getId(), precision, recall, averagePrecision, reciprocalRank);
+                logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);
 
             }
 
-            logger.info("Mean metrics - Precision: {}, Recall: {}, Average Precision: {}, Reciprocal Rank: {}",
-                    meanMetrics.getMeanPrecision(), meanMetrics.getMeanRecall(), meanMetrics.getMeanAveragePrecision(),
-                    meanMetrics.getMeanReciprocalRank());
+            logger.info("Mean metrics - nDCG: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(), meanMetrics.getMP(),
+                    meanMetrics.getMRR());
 
         } catch (final IOException e) {
             logger.error("Error opening index - {}", e.getMessage());
