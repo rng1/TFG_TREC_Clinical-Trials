@@ -1,5 +1,10 @@
 package es.udc.fi.tfg.index;
 
+import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
+import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
+import static es.udc.fi.tfg.util.Parameters.N_THREADS;
+import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -18,29 +23,21 @@ public class IndexTrecClinicalTrials {
     private static final Logger logger = LoggerFactory.getLogger(IndexTrecClinicalTrials.class);
 
     public static void main(final String[] args) {
-
-        // For timing purposes.
         final long start = System.currentTimeMillis();
-
-        // Program arguments.
-        final IndexParams params = IndexTrecClinicalTrialsHelper.parseIndexInputParams(args);
-
-        final int numThreads = params.getNumThreads() > Runtime.getRuntime().availableProcessors()
-                || params.getNumThreads() < 1 ? Runtime.getRuntime().availableProcessors() : params.getNumThreads();
 
         final IndexWriterConfig iwc = new IndexWriterConfig();
         iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-        iwc.setSimilarity(params.getModel());
+        iwc.setSimilarity(SIMILARITY);
 
-        logger.info("Indexing to directory '{}'", params.getIndexPath());
+        logger.info("Indexing to directory '{}'", INDEX_PATH);
 
-        try (final IndexWriter writer = new IndexWriter(FSDirectory.open(Paths.get(params.getIndexPath())), iwc)) {
+        try (final IndexWriter writer = new IndexWriter(FSDirectory.open(Paths.get(INDEX_PATH)), iwc)) {
 
-            final File dir = new File(Paths.get(params.getDocsPath()).toUri());
+            final File dir = new File(Paths.get(DOCS_PATH.concat("/trials")).toUri());
             final File[] files = dir.listFiles();
 
             if (files != null) {
-                final ThreadPoolExecutor exec = (ThreadPoolExecutor) Executors.newFixedThreadPool(numThreads);
+                final ThreadPoolExecutor exec = (ThreadPoolExecutor) Executors.newFixedThreadPool(N_THREADS);
 
                 for (final File file : files) {
                     final Runnable worker = new IndexerThread(file, writer);

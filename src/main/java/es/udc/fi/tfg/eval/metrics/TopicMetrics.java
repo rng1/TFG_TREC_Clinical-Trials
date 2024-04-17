@@ -6,7 +6,7 @@ import java.util.List;
 
 public class TopicMetrics {
 
-    private final List<Integer> dcgRelevances = new ArrayList<>();
+    private final List<Integer> dcgRelevance = new ArrayList<>();
 
     private int firstRelevantPos = Integer.MAX_VALUE;
     private int relevantRetrieved = 0;
@@ -20,7 +20,7 @@ public class TopicMetrics {
             relevantRetrieved++;
         }
 
-        dcgRelevances.add(relevance);
+        dcgRelevance.add(relevance);
     }
 
     // Precision at cut
@@ -37,19 +37,19 @@ public class TopicMetrics {
     public double getDCG(final int cut) {
         double dcg = 0.0;
         for (int i = 0; i < cut; i++) {
-            dcg += (Math.pow(2, dcgRelevances.get(i)) - 1) / log2(i + 2);
+            dcg += (Math.pow(2, dcgRelevance.get(i)) - 1) / log2(i + 2);
         }
         return dcg;
     }
 
     // Ideal Discounted Cumulative Gain at cut
     public double getIDCG(final int cut) {
-        final List<Integer> sortedRelevances = new ArrayList<>(dcgRelevances);
-        sortedRelevances.sort(Collections.reverseOrder());
+        final List<Integer> sortedRelevance = new ArrayList<>(dcgRelevance);
+        sortedRelevance.sort(Collections.reverseOrder());
 
         double idcg = 0.0;
         for (int i = 0; i < cut; i++) {
-            idcg += (Math.pow(2, sortedRelevances.get(i)) - 1) / log2(i + 2);
+            idcg += (Math.pow(2, sortedRelevance.get(i)) - 1) / log2(i + 2);
         }
         return idcg;
     }

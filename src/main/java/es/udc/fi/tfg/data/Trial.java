@@ -1,16 +1,7 @@
 package es.udc.fi.tfg.data;
 
-import lombok.Data;
-
-@Data
-public final class Trial {
-
-    private final String nctId;
-    private final String criteria;
-    private final String gender;
-    private final String minAge;
-    private final String maxAge;
-    private final String healthyVolunteers;
+public record Trial(String nctId, String criteria, String gender, String minAge, String maxAge,
+        String healthyVolunteers) {
 
     @Override
     public String toString() {

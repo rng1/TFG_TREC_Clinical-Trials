@@ -1,5 +1,10 @@
 package es.udc.fi.tfg.eval;
 
+import static es.udc.fi.tfg.util.Parameters.CUT;
+import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
+import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
+import static es.udc.fi.tfg.util.Parameters.TRIALS_PER_TOPIC;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -27,76 +32,92 @@ public class SearchEvalTrecClinicalTrials {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchEvalTrecClinicalTrials.class);
 
-    private static final int TRIALS_PER_TOPIC = 1000;
-
     public static void main(final String[] args) {
 
-        // Program arguments.
-        final SearchEvalParams params = SearchEvalTrecClinicalTrialsHelper.parseSearchInputParams(args);
-
         // Topics and relevance parsing.
-        final Collection<Topic> topics = SearchEvalTrecClinicalTrialsHelper.parseTopics(params.getDocsPath());
-        final Map<Integer, Map<String, Integer>> qrels = SearchEvalTrecClinicalTrialsHelper
-                .parseQrels(params.getDocsPath());
+        final Collection<Topic> topics = SearchEvalTrecClinicalTrialsHelper.parseTopics();
+        final Map<Integer, Map<String, Integer>> qrels = SearchEvalTrecClinicalTrialsHelper.parseQrels();
 
-        try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(params.getIndexPath())))) {
+        try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH)))) {
 
             final IndexSearcher searcher = new IndexSearcher(reader);
-            searcher.setSimilarity(params.getModel());
+            searcher.setSimilarity(SIMILARITY);
             final QueryParser parser = new QueryParser("contents", new StandardAnalyzer());
 
             // Initialize the metrics calculator for all queries.
             final MeanMetrics meanMetrics = new MeanMetrics();
 
-            for (final Topic topic : topics) {
-
-                logger.info("Processing topic {}", topic.getId());
-
-                final Map<String, Integer> innerMap = qrels.get(topic.getId());
-                // final long totalRelevant = innerMap.values().stream().filter(e -> e == 2).count();
-
-                final Query query = parser.parse(QueryParser.escape(topic.getDescription()));
-                final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
-                final StoredFields storedFields = searcher.storedFields();
-
-                final int retrieved = (int) hits.totalHits.value;
-                final int cut = Math.min(retrieved, params.getCut());
-
-                // Initialize the metrics calculator for the current query.
-                final TopicMetrics topicMetrics = new TopicMetrics();
-
-                for (int i = 0; i < cut; i++) {
-
-                    final ScoreDoc hit = hits.scoreDocs[i];
-                    final String docId = storedFields.document(hit.doc).get("nct_id");
-                    final int relevance = innerMap.getOrDefault(docId, 0);
-
-                    topicMetrics.updateMetrics(relevance, i);
-
-                    logger.info("Topic {} - Document{} '{}' with score {}", topic.getId(), relevance == 2 ? "*" : "",
-                            docId, hit.score);
-                }
-
-                final double p = topicMetrics.getP(cut);
-                final double rr = topicMetrics.getRR();
-                final double dcg = topicMetrics.getDCG(cut);
-                final double idcg = topicMetrics.getIDCG(cut);
-                final double ndcg = (dcg == 0) ? 0 : dcg / idcg;
-
-                meanMetrics.updateMetrics(p, rr, ndcg);
-
-                logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);
-
-            }
+            for (final Topic topic : topics)
+                processTopic(topic, qrels, parser, searcher, meanMetrics);
 
             logger.info("Mean metrics - nDCG: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(), meanMetrics.getMP(),
                     meanMetrics.getMRR());
 
         } catch (final IOException e) {
             logger.error("Error opening index - {}", e.getMessage());
-        } catch (final ParseException e) {
-            logger.error("Error parsing query - {}", e.getMessage());
         }
 
+    }
+
+    /**
+     * Process a single topic.
+     *
+     * @param topic
+     *            the topic to process.
+     * @param qrels
+     *            the relevance judgments.
+     * @param parser
+     *            the query parser.
+     * @param searcher
+     *            the index searcher.
+     * @param meanMetrics
+     *            the mean metrics calculator.
+     */
+    private static void processTopic(final Topic topic, final Map<Integer, Map<String, Integer>> qrels,
+            final QueryParser parser, final IndexSearcher searcher, final MeanMetrics meanMetrics) {
+
+        logger.info("Processing topic {}", topic.getId());
+
+        final Map<String, Integer> innerMap = qrels.get(topic.getId());
+        // final long totalRelevant = innerMap.values().stream().filter(e -> e == 2).count();
+
+        try {
+            final Query query = parser.parse(QueryParser.escape(topic.getDescription()));
+            final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
+            final StoredFields storedFields = searcher.storedFields();
+
+            final int retrieved = (int) hits.totalHits.value;
+            final int cut = Math.min(retrieved, CUT);
+
+            // Initialize the metrics calculator for the current query.
+            final TopicMetrics topicMetrics = new TopicMetrics();
+
+            for (int i = 0; i < cut; i++) {
+
+                final ScoreDoc hit = hits.scoreDocs[i];
+                final String docId = storedFields.document(hit.doc).get("nct_id");
+                final int relevance = innerMap.getOrDefault(docId, 0);
+
+                topicMetrics.updateMetrics(relevance, i);
+
+                logger.info("Topic {} - Document{} '{}' with score {}", topic.getId(), relevance == 2 ? "*" : "",
+                        docId, hit.score);
+            }
+
+            final double p = topicMetrics.getP(cut);
+            final double rr = topicMetrics.getRR();
+            final double dcg = topicMetrics.getDCG(cut);
+            final double idcg = topicMetrics.getIDCG(cut);
+            final double ndcg = (dcg == 0) ? 0 : dcg / idcg;
+
+            meanMetrics.updateMetrics(p, rr, ndcg);
+
+            logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);
+
+        } catch (final ParseException e) {
+            logger.error("Error parsing query - {}", e.getMessage());
+        } catch (final IOException e) {
+            logger.error("Error searching index - {}", e.getMessage());
+        }
     }
 }

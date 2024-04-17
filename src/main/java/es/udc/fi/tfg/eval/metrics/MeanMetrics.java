@@ -10,10 +10,11 @@ public class MeanMetrics {
     public void updateMetrics(final double p, final double rr, final double ndcg) {
         sumOfP += p;
         sumOfRR += rr;
-        // if ndcg is not NaN, sum it
+
         if (!Double.isNaN(ndcg)) {
             sumOfnDCG += ndcg;
         }
+
         totalMetrics++;
     }
 
