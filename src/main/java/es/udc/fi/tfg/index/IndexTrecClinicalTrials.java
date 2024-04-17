@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 
 public class IndexTrecClinicalTrials {
 
-    public static void main(final String[] args) {
+    private static final Logger logger = LoggerFactory.getLogger(IndexTrecClinicalTrials.class);
 
-        final Logger logger = LoggerFactory.getLogger(IndexTrecClinicalTrials.class);
+    public static void main(final String[] args) {
 
         // For timing purposes.
         final long start = System.currentTimeMillis();
@@ -50,7 +50,7 @@ public class IndexTrecClinicalTrials {
                 exec.shutdown();
 
                 try {
-                    if (!exec.awaitTermination(2, TimeUnit.MINUTES)) {
+                    if (!exec.awaitTermination(5, TimeUnit.MINUTES)) {
                         logger.error("Indexing timeout");
                     }
                 } catch (final InterruptedException e) {

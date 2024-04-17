@@ -12,11 +12,9 @@ import javax.xml.stream.XMLStreamReader;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +26,7 @@ public class IndexerThread implements Runnable {
     private final File file;
     private final IndexWriter writer;
 
-    final Logger logger = LoggerFactory.getLogger(IndexerThread.class);
+    private final Logger logger = LoggerFactory.getLogger(IndexerThread.class);
 
     public IndexerThread(final File file, final IndexWriter writer) {
         this.file = file;
@@ -81,15 +79,15 @@ public class IndexerThread implements Runnable {
                     final String elementName = reader.getLocalName();
                     // Get the name of the element.
                     switch (elementName) {
-                    case "nct_id" -> nctId = reader.getElementText();
-                    case "gender" -> gender = reader.getElementText();
-                    case "minimum_age" -> minAge = parseAge(reader.getElementText());
-                    case "maximum_age" -> maxAge = parseAge(reader.getElementText());
-                    case "healthy_volunteers" -> healthyVolunteers = reader.getElementText();
+                    case "nct_id" -> nctId = reader.getElementText().toLowerCase();
+                    case "gender" -> gender = reader.getElementText().toLowerCase();
+                    case "minimum_age" -> minAge = reader.getElementText().toLowerCase();
+                    case "maximum_age" -> maxAge = reader.getElementText().toLowerCase();
+                    case "healthy_volunteers" -> healthyVolunteers = reader.getElementText().toLowerCase();
                     case "criteria" -> isCriteria = true;
                     case "textblock" -> {
                         if (isCriteria)
-                            criteria = reader.getElementText();
+                            criteria = reader.getElementText().toLowerCase();
                     }
                     }
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
@@ -128,11 +126,7 @@ public class IndexerThread implements Runnable {
 
         final Document doc = new Document();
 
-        final FieldType criteriaField = new FieldType();
-        criteriaField.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
-        criteriaField.setStoreTermVectors(true);
-        criteriaField.setStored(true);
-
+        // TODO: revisar campos
         doc.add(new KeywordField("nct_id", trial.getNctId(), Field.Store.YES));
         doc.add(new TextField("criteria", emptyIfNull(trial.getCriteria()), Field.Store.NO));
         doc.add(new StringField("gender", emptyIfNull(trial.getGender()), Field.Store.NO));
@@ -142,11 +136,6 @@ public class IndexerThread implements Runnable {
         doc.add(new TextField("contents", trial.toString(), Field.Store.YES));
 
         return doc;
-    }
-
-    private String parseAge(final String age) {
-        final String[] numbers = age.split("\\D+");
-        return numbers.length == 0 ? null : numbers[0];
     }
 
     private String emptyIfNull(final String str) {
