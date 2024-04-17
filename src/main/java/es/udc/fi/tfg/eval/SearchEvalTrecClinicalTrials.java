@@ -27,6 +27,8 @@ public class SearchEvalTrecClinicalTrials {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchEvalTrecClinicalTrials.class);
 
+    private static final int TRIALS_PER_TOPIC = 1000;
+
     public static void main(final String[] args) {
 
         // Program arguments.
@@ -48,13 +50,13 @@ public class SearchEvalTrecClinicalTrials {
 
             for (final Topic topic : topics) {
 
-                logger.info("Processing topic '{}'", topic.getId());
+                logger.info("Processing topic {}", topic.getId());
 
                 final Map<String, Integer> innerMap = qrels.get(topic.getId());
                 final long totalRelevant = innerMap.values().stream().filter(e -> e != 0).count();
 
                 final Query query = parser.parse(QueryParser.escape(topic.getDescription()));
-                final TopDocs hits = searcher.search(query, params.getCut());
+                final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
                 final int retrieved = (int) hits.totalHits.value;
                 final StoredFields storedFields = searcher.storedFields();
 
@@ -69,7 +71,7 @@ public class SearchEvalTrecClinicalTrials {
 
                     topicMetrics.updateMetrics(relevance, i);
 
-                    logger.info("Topic {} - Document{} '{}' with score '{}'", topic.getId(), relevance != 0 ? "*" : "",
+                    logger.info("Topic {} - Document{} '{}' with score {}", topic.getId(), relevance == 2 ? "*" : "",
                             docId, hit.score);
                 }
 
@@ -81,19 +83,19 @@ public class SearchEvalTrecClinicalTrials {
                 meanMetrics.updateMetrics(precision, recall, averagePrecision, reciprocalRank);
 
                 logger.info(
-                        "Topic '{}' - Precision: '{}', Recall: '{}', Average Precision: '{}', Reciprocal Rank: '{}'",
+                        "Topic {} - Precision: {}, Recall: {}, Average Precision: {}, Reciprocal Rank: {}",
                         topic.getId(), precision, recall, averagePrecision, reciprocalRank);
 
             }
 
-            logger.info("Mean metrics - Precision: '{}', Recall: '{}', Average Precision: '{}', Reciprocal Rank: '{}'",
+            logger.info("Mean metrics - Precision: {}, Recall: {}, Average Precision: {}, Reciprocal Rank: {}",
                     meanMetrics.getMeanPrecision(), meanMetrics.getMeanRecall(), meanMetrics.getMeanAveragePrecision(),
                     meanMetrics.getMeanReciprocalRank());
 
         } catch (final IOException e) {
-            logger.error("Error opening index - '{}'", e.getMessage());
+            logger.error("Error opening index - {}", e.getMessage());
         } catch (final ParseException e) {
-            logger.error("Error parsing query - '{}'", e.getMessage());
+            logger.error("Error parsing query - {}", e.getMessage());
         }
 
     }

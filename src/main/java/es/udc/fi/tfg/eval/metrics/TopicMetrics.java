@@ -2,28 +2,28 @@ package es.udc.fi.tfg.eval.metrics;
 
 public class TopicMetrics {
 
-    private final int retrieved;
+    private final int totalRetrieved;
     private final long totalRelevant;
 
-    private int firstPos = Integer.MAX_VALUE;
+    private int firstRelevantPos = Integer.MAX_VALUE;
     private int relevantRetrieved = 0;
-    private double sumPrecision = 0.0;
+    private double sumOfPrecision = 0.0;
 
-    public TopicMetrics(final int retrieved, final long totalRelevant) {
-        this.retrieved = retrieved;
+    public TopicMetrics(final int totalRetrieved, final long totalRelevant) {
+        this.totalRetrieved = totalRetrieved;
         this.totalRelevant = totalRelevant;
     }
 
     public void updateMetrics(final int relevance, final int i) {
-        if (relevance != 0) {
-            firstPos = Math.min(firstPos, i);
+        if (relevance == 2) {
+            firstRelevantPos = Math.min(firstRelevantPos, i);
             relevantRetrieved++;
-            sumPrecision += (double) relevantRetrieved / (i + 1);
+            sumOfPrecision += (double) relevantRetrieved / (i + 1);
         }
     }
 
     public double getPrecision(final int cut) {
-        return (double) relevantRetrieved / Math.min(cut, retrieved);
+        return (double) relevantRetrieved / Math.min(cut, totalRetrieved);
     }
 
     public double getRecall() {
@@ -31,10 +31,10 @@ public class TopicMetrics {
     }
 
     public double getAveragePrecision() {
-        return sumPrecision / totalRelevant;
+        return sumOfPrecision / totalRelevant;
     }
 
     public double getReciprocalRank() {
-        return firstPos == Integer.MAX_VALUE ? 0.0 : (double) 1 / (firstPos + 1);
+        return firstRelevantPos == Integer.MAX_VALUE ? 0.0 : (double) 1 / (firstRelevantPos + 1);
     }
 }
