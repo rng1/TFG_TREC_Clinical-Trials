@@ -98,9 +98,9 @@ public class SearchEvalTrecClinicalTrialsHelper {
     protected static String getMetricsFileName() {
 
         final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
-        final String filePath = "metrics/" + dateTime + "_trec_cut_" + CUT + "_metrics.csv";
+        final String filePath = dateTime + "_trec_cut_" + CUT + "_metrics.csv";
 
-        return Paths.get(DOCS_PATH, filePath).toString();
+        return Paths.get(DOCS_PATH, "metrics", filePath).toString();
     }
 
 }
