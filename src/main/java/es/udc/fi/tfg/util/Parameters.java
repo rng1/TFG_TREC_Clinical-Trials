@@ -5,8 +5,8 @@ import org.apache.lucene.search.similarities.Similarity;
 
 public record Parameters() {
 
-    public static final String DOCS_PATH = "C:/Users/rnara/Desktop/TFG/data";
-    public static final String INDEX_PATH = "C:/Users/rnara/Desktop/TFG/index";
+    public static final String DOCS_PATH = "";
+    public static final String INDEX_PATH = "";
 
     public static final int N_THREADS = Runtime.getRuntime().availableProcessors();
     public static final int TRIALS_PER_TOPIC = 1000;
