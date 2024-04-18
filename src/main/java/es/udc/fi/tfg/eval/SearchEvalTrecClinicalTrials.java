@@ -5,6 +5,8 @@ import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
 import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
 import static es.udc.fi.tfg.util.Parameters.TRIALS_PER_TOPIC;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -38,17 +40,19 @@ public class SearchEvalTrecClinicalTrials {
         final Collection<Topic> topics = SearchEvalTrecClinicalTrialsHelper.parseTopics();
         final Map<Integer, Map<String, Integer>> qrels = SearchEvalTrecClinicalTrialsHelper.parseQrels();
 
-        try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH)))) {
+        try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH)));
+                final BufferedWriter writer = new BufferedWriter(
+                        new FileWriter(SearchEvalTrecClinicalTrialsHelper.getMetricsFileName()))) {
 
             final IndexSearcher searcher = new IndexSearcher(reader);
             searcher.setSimilarity(SIMILARITY);
             final QueryParser parser = new QueryParser("contents", new StandardAnalyzer());
 
-            // Initialize the metrics calculator for all queries.
             final MeanMetrics meanMetrics = new MeanMetrics();
+            writer.write("id\tnDCG@" + CUT + "\tP@" + CUT + "\tRR\n");
 
             for (final Topic topic : topics)
-                processTopic(topic, qrels, parser, searcher, meanMetrics);
+                processTopic(topic, qrels, parser, searcher, writer, meanMetrics);
 
             logger.info("Mean metrics - nDCG: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(), meanMetrics.getMP(),
                     meanMetrics.getMRR());
@@ -74,7 +78,8 @@ public class SearchEvalTrecClinicalTrials {
      *            the mean metrics calculator.
      */
     private static void processTopic(final Topic topic, final Map<Integer, Map<String, Integer>> qrels,
-            final QueryParser parser, final IndexSearcher searcher, final MeanMetrics meanMetrics) {
+            final QueryParser parser, final IndexSearcher searcher, final BufferedWriter writer,
+            final MeanMetrics meanMetrics) {
 
         logger.info("Processing topic {}", topic.getId());
 
@@ -110,6 +115,7 @@ public class SearchEvalTrecClinicalTrials {
             final double idcg = topicMetrics.getIDCG(cut);
             final double ndcg = (dcg == 0) ? 0 : dcg / idcg;
 
+            writer.write(topic.getId() + "\t" + ndcg + "\t" + p + "\t" + rr + "\n");
             meanMetrics.updateMetrics(p, rr, ndcg);
 
             logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);

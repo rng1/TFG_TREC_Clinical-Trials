@@ -1,11 +1,15 @@
 package es.udc.fi.tfg.eval;
 
+import static es.udc.fi.tfg.util.Parameters.CUT;
 import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -89,6 +93,14 @@ public class SearchEvalTrecClinicalTrialsHelper {
         }
 
         return qrelsMap;
+    }
+
+    protected static String getMetricsFileName() {
+
+        final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
+        final String filePath = "metrics/" + dateTime + "_trec_cut_" + CUT + "_metrics.csv";
+
+        return Paths.get(DOCS_PATH, filePath).toString();
     }
 
 }
