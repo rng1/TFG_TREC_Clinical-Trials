@@ -128,16 +128,16 @@ public class IndexerThread implements Runnable {
 
         final Document doc = new Document();
 
+        final String gender = trial.gender();
+        final String minAge = trial.minAge();
+        final String maxAge = trial.maxAge();
+
         doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
-        doc.add(new StringField("gender", emptyIfNull(trial.gender()), Field.Store.YES));
-        doc.add(new StringField("min_age", emptyIfNull(trial.minAge()), Field.Store.YES));
-        doc.add(new StringField("max_age", emptyIfNull(trial.maxAge()), Field.Store.YES));
+        doc.add(new StringField("gender", gender == null ? "all" : gender, Field.Store.YES));
+        doc.add(new StringField("min_age", minAge == null ? "n/a" : minAge, Field.Store.YES));
+        doc.add(new StringField("max_age", maxAge == null ? "n/a" : maxAge, Field.Store.YES));
         doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
 
         return doc;
-    }
-
-    private String emptyIfNull(final String str) {
-        return str == null ? "" : str;
     }
 }

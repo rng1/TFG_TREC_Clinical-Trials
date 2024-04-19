@@ -1,7 +1,6 @@
 package es.udc.fi.tfg.eval;
 
 import static es.udc.fi.tfg.util.Parameters.BRANCH_NAME;
-import static es.udc.fi.tfg.util.Parameters.CUT;
 import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
 
 import java.io.FileInputStream;
@@ -27,9 +26,9 @@ import org.slf4j.LoggerFactory;
 
 import es.udc.fi.tfg.data.Topic;
 
-public class SearchEvalTrecClinicalTrialsHelper {
+public class SearchEvalHelper {
 
-    private static final Logger logger = LoggerFactory.getLogger(SearchEvalTrecClinicalTrialsHelper.class);
+    private static final Logger logger = LoggerFactory.getLogger(SearchEvalHelper.class);
 
     /**
      * Parses the topics file and returns a set with the topics.
@@ -99,9 +98,17 @@ public class SearchEvalTrecClinicalTrialsHelper {
     protected static String getMetricsFileName() {
 
         final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
-        final String filePath = dateTime + "_" + BRANCH_NAME + "_cut_" + CUT + "_metrics.csv";
+        final String filePath = dateTime + "_" + BRANCH_NAME + "_metrics.csv";
 
-        return Paths.get(DOCS_PATH, "metrics", BRANCH_NAME, filePath).toString();
+        return Paths.get(DOCS_PATH, "metrics", filePath).toString();
+    }
+
+    protected static String getGenderFilterValue(final String gender) {
+        return switch (gender) {
+        case "woman", "female", "girl" -> "female";
+        case "man", "male", "boy" -> "male";
+        default -> "";
+        };
     }
 
 }

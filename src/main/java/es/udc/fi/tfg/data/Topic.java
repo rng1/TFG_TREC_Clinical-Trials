@@ -12,7 +12,7 @@ import lombok.Data;
 public class Topic {
 
     private final Pattern AGE_PATTERN = Pattern.compile("\\d+-year-old|\\d+-month-old|\\d+-week-old");
-    private final List<String> GENDER_WORDS = Arrays.asList("male", "man", "boy", "female", "woman", "girl", "infant");
+    private final List<String> GENDER_WORDS = Arrays.asList("male", "man", "boy", "female", "woman", "girl");
 
     private final int id;
     private final String age;

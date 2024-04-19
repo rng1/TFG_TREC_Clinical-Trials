@@ -14,7 +14,9 @@ public record Trial(String nctId, String criteria, String gender, String minAge,
             sb.append(criteria).append("\n");
         }
 
-        sb.append("gender: ").append(gender).append("\n");
+        if (gender != null) {
+            sb.append("gender: ").append(gender).append("\n");
+        }
 
         if (minAge != null) {
             sb.append("minimum age: ").append(minAge).append("\n");

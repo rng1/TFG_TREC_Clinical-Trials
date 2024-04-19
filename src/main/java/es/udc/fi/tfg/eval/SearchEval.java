@@ -16,11 +16,15 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
 import org.slf4j.Logger;
@@ -30,19 +34,19 @@ import es.udc.fi.tfg.data.Topic;
 import es.udc.fi.tfg.eval.metrics.MeanMetrics;
 import es.udc.fi.tfg.eval.metrics.TopicMetrics;
 
-public class SearchEvalTrecClinicalTrials {
+public class SearchEval {
 
-    private static final Logger logger = LoggerFactory.getLogger(SearchEvalTrecClinicalTrials.class);
+    private static final Logger logger = LoggerFactory.getLogger(SearchEval.class);
 
     public static void main(final String[] args) {
 
         // Topics and relevance parsing.
-        final Collection<Topic> topics = SearchEvalTrecClinicalTrialsHelper.parseTopics();
-        final Map<Integer, Map<String, Integer>> qrels = SearchEvalTrecClinicalTrialsHelper.parseQrels();
+        final Collection<Topic> topics = SearchEvalHelper.parseTopics();
+        final Map<Integer, Map<String, Integer>> qrels = SearchEvalHelper.parseQrels();
 
         try (final IndexReader reader = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH)));
                 final BufferedWriter writer = new BufferedWriter(
-                        new FileWriter(SearchEvalTrecClinicalTrialsHelper.getMetricsFileName()))) {
+                        new FileWriter(SearchEvalHelper.getMetricsFileName()))) {
 
             final IndexSearcher searcher = new IndexSearcher(reader);
             searcher.setSimilarity(SIMILARITY);
@@ -84,10 +88,25 @@ public class SearchEvalTrecClinicalTrials {
         logger.info("Processing topic {}", topic.getId());
 
         final Map<String, Integer> innerMap = qrels.get(topic.getId());
-        // final long totalRelevant = innerMap.values().stream().filter(e -> e == 2).count();
 
         try {
-            final Query query = parser.parse(QueryParser.escape(topic.getDescription()));
+            final Query descriptionQuery = parser.parse(QueryParser.escape(topic.getDescription()));
+
+            // Create the gender filters and combine them.
+            final String genderFilterValue = SearchEvalHelper.getGenderFilterValue(topic.getGender());
+            final Query genderFilter = new TermQuery(new Term("gender", genderFilterValue));
+            final Query allGenderFilter = new TermQuery(new Term("gender", "all"));
+            final BooleanQuery genderBooleanQuery = new BooleanQuery.Builder()
+                    .add(genderFilter, BooleanClause.Occur.SHOULD)
+                    .add(allGenderFilter, BooleanClause.Occur.SHOULD)
+                    .build();
+
+            // Combine the description query and the gender filter.
+            final BooleanQuery query = new BooleanQuery.Builder()
+                    .add(descriptionQuery, BooleanClause.Occur.MUST)
+                    .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
+                    .build();
+
             final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
             final StoredFields storedFields = searcher.storedFields();
 
@@ -113,7 +132,7 @@ public class SearchEvalTrecClinicalTrials {
             final double rr = topicMetrics.getRR();
             final double dcg = topicMetrics.getDCG(cut);
             final double idcg = topicMetrics.getIDCG(cut);
-            final double ndcg = (dcg == 0) ? 0 : dcg / idcg;
+            final double ndcg = (idcg == 0) ? 0 : dcg / idcg;
 
             writer.write(topic.getId() + "\t" + ndcg + "\t" + p + "\t" + rr + "\n");
             meanMetrics.updateMetrics(p, rr, ndcg);

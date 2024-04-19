@@ -18,9 +18,9 @@ import org.apache.lucene.store.FSDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IndexTrecClinicalTrials {
+public class IndexTrials {
 
-    private static final Logger logger = LoggerFactory.getLogger(IndexTrecClinicalTrials.class);
+    private static final Logger logger = LoggerFactory.getLogger(IndexTrials.class);
 
     public static void main(final String[] args) {
         final long start = System.currentTimeMillis();
