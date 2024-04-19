@@ -1,6 +1,7 @@
 package es.udc.fi.tfg.eval;
 
 import static es.udc.fi.tfg.util.Parameters.CUT;
+import static es.udc.fi.tfg.util.Parameters.FILTER;
 import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
 import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
 import static es.udc.fi.tfg.util.Parameters.TRIALS_PER_TOPIC;
@@ -188,12 +189,16 @@ public class SearchEval {
         final double[] ageNorm = new double[] { Utility.normalizeAge(topic.getAge()) };
         final Query ageFilter = DoubleRange.newCrossesQuery("age_range", ageNorm, ageNorm);
 
-        // Combined query.
-        return new BooleanQuery.Builder()
-                .add(descriptionQuery, BooleanClause.Occur.MUST)
-                .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
-                .add(ageFilter, BooleanClause.Occur.FILTER)
-                .build();
+        // Query builder.
+        return FILTER
+                ? new BooleanQuery.Builder()
+                        .add(descriptionQuery, BooleanClause.Occur.MUST)
+                        .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
+                        .add(ageFilter, BooleanClause.Occur.FILTER)
+                        .build()
+                : new BooleanQuery.Builder()
+                        .add(descriptionQuery, BooleanClause.Occur.MUST)
+                        .build();
 
     }
 }

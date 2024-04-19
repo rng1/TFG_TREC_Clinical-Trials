@@ -14,4 +14,6 @@ public record Parameters() {
     public static final int CUT = 10;
 
     public static final Similarity SIMILARITY = new BM25Similarity(1.2f, 0.75f);
+
+    public static boolean FILTER = true;
 }
