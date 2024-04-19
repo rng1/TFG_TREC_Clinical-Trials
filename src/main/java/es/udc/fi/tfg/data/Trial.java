@@ -1,7 +1,9 @@
 package es.udc.fi.tfg.data;
 
+import java.util.Collection;
+
 public record Trial(String nctId, String criteria, String gender, String minAge, String maxAge,
-        String healthyVolunteers) {
+        String healthyVolunteers, Collection<String> keywords) {
 
     @Override
     public String toString() {
@@ -24,6 +26,10 @@ public record Trial(String nctId, String criteria, String gender, String minAge,
 
         if (healthyVolunteers != null) {
             sb.append("admits healthy volunteers: ").append(healthyVolunteers).append("\n");
+        }
+
+        if (keywords != null) {
+            sb.append("keywords: ").append(String.join(", ", keywords)).append("\n");
         }
 
         return sb.toString();

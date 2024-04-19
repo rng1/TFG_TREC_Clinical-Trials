@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
@@ -43,10 +45,10 @@ public class IndexerThread implements Runnable {
         final File[] trials = file.listFiles();
 
         if (trials != null) {
-            for (final File trial : trials) {
-                logger.info("Processing file '{}'", trial.getName());
-                final Trial trialPojo = parseXml(trial);
-                indexTrial(trialPojo, writer);
+            for (final File trialXml : trials) {
+                logger.info("Processing file '{}'", trialXml.getName());
+                final Trial trial = parseXml(trialXml);
+                indexTrial(trial, writer);
             }
         }
 
@@ -61,8 +63,9 @@ public class IndexerThread implements Runnable {
         try {
             final XMLStreamReader reader = factory.createXMLStreamReader(new FileInputStream(file));
 
-            boolean isCriteria = false;
+            final List<String> keywords = new ArrayList<>();
 
+            boolean isCriteria = false;
             String nctId = null;
             String gender = null;
             String minAge = null;
@@ -82,6 +85,7 @@ public class IndexerThread implements Runnable {
                     case "minimum_age" -> minAge = reader.getElementText().toLowerCase();
                     case "maximum_age" -> maxAge = reader.getElementText().toLowerCase();
                     case "healthy_volunteers" -> healthyVolunteers = reader.getElementText().toLowerCase();
+                    case "keyword", "mesh_term" -> keywords.add(reader.getElementText().toLowerCase());
                     case "criteria" -> isCriteria = true;
                     case "textblock" -> {
                         if (isCriteria)
@@ -94,7 +98,7 @@ public class IndexerThread implements Runnable {
                 }
             }
 
-            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers);
+            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers, keywords);
 
         } catch (final XMLStreamException e) {
             logger.error("Error reading XML file - {}", e.getMessage());
@@ -125,11 +129,9 @@ public class IndexerThread implements Runnable {
         final Document doc = new Document();
 
         doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
-        doc.add(new TextField("criteria", emptyIfNull(trial.criteria()), Field.Store.NO));
         doc.add(new StringField("gender", emptyIfNull(trial.gender()), Field.Store.YES));
         doc.add(new StringField("min_age", emptyIfNull(trial.minAge()), Field.Store.YES));
         doc.add(new StringField("max_age", emptyIfNull(trial.maxAge()), Field.Store.YES));
-        doc.add(new StringField("healthy_volunteers", emptyIfNull(trial.healthyVolunteers()), Field.Store.NO));
         doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
 
         return doc;

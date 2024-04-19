@@ -1,5 +1,6 @@
 package es.udc.fi.tfg.eval;
 
+import static es.udc.fi.tfg.util.Parameters.BRANCH_NAME;
 import static es.udc.fi.tfg.util.Parameters.CUT;
 import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
 
@@ -98,9 +99,9 @@ public class SearchEvalTrecClinicalTrialsHelper {
     protected static String getMetricsFileName() {
 
         final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
-        final String filePath = dateTime + "_trec_cut_" + CUT + "_metrics.csv";
+        final String filePath = dateTime + "_" + BRANCH_NAME + "_cut_" + CUT + "_metrics.csv";
 
-        return Paths.get(DOCS_PATH, "metrics", filePath).toString();
+        return Paths.get(DOCS_PATH, "metrics", BRANCH_NAME, filePath).toString();
     }
 
 }
