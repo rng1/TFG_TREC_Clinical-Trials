@@ -5,9 +5,9 @@ import org.apache.lucene.search.similarities.Similarity;
 
 public record Parameters() {
 
-    public static final String BRANCH_NAME = "filter";
-    public static final String DOCS_PATH = "C:/Users/rnara/Desktop/TFG/data";
-    public static final String INDEX_PATH = "C:/Users/rnara/Desktop/TFG/index/" + BRANCH_NAME;
+    public static final String BRANCH_NAME = "";
+    public static final String DOCS_PATH = "";
+    public static final String INDEX_PATH = "" + BRANCH_NAME;
 
     public static final int N_THREADS = Runtime.getRuntime().availableProcessors();
     public static final int TRIALS_PER_TOPIC = 1000;
