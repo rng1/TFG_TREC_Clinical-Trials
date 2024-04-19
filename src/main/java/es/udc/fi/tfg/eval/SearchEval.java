@@ -60,11 +60,13 @@ public class SearchEval {
             for (final Topic topic : topics)
                 processTopic(topic, qrels, parser, searcher, writer, meanMetrics);
 
-            logger.info("Mean metrics - nDCG: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(), meanMetrics.getMP(),
-                    meanMetrics.getMRR());
+            logger.info("Mean metrics - nDCG: {}, RPrec: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(),
+                    meanMetrics.getMRP(), meanMetrics.getMP(), meanMetrics.getMRR());
 
         } catch (final IOException e) {
-            logger.error("Error opening index - {}", e.getMessage());
+            logger.error("Error handling the index - {}", e.getMessage());
+        } catch (final ParseException e) {
+            logger.error("Error parsing query - {}", e.getMessage());
         }
 
     }
@@ -85,54 +87,90 @@ public class SearchEval {
      */
     private static void processTopic(final Topic topic, final Map<Integer, Map<String, Integer>> qrels,
             final QueryParser parser, final IndexSearcher searcher, final BufferedWriter writer,
-            final MeanMetrics meanMetrics) {
+            final MeanMetrics meanMetrics) throws IOException, ParseException {
 
         logger.info("Processing topic {}", topic.getId());
 
         final Map<String, Integer> innerMap = qrels.get(topic.getId());
+        final int totalRelevant = (int) innerMap.values().stream().filter(e -> e == 2).count();
 
-        try {
-            final BooleanQuery query = getQuery(topic, parser);
+        final BooleanQuery query = getQuery(topic, parser);
 
-            final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
-            final StoredFields storedFields = searcher.storedFields();
+        final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
+        final StoredFields storedFields = searcher.storedFields();
 
-            final int retrieved = (int) hits.totalHits.value;
-            final int cut = Math.min(retrieved, CUT);
+        final int retrieved = (int) hits.totalHits.value;
+        final int cut = Math.min(retrieved, CUT);
 
-            // Initialize the metrics calculator for the current query.
-            final TopicMetrics topicMetrics = new TopicMetrics();
+        // Initialize the metrics calculator for the current query.
+        final TopicMetrics topicMetrics = new TopicMetrics();
 
-            for (int i = 0; i < cut; i++) {
+        // @cut
+        processDocuments(topic, innerMap, hits, storedFields, topicMetrics, cut, 0);
 
-                final ScoreDoc hit = hits.scoreDocs[i];
-                final String docId = storedFields.document(hit.doc).get("nct_id");
-                final int relevance = innerMap.getOrDefault(docId, 0);
+        final double p = topicMetrics.getP(cut);
+        final double rr = topicMetrics.getRR();
+        final double dcg = topicMetrics.getDCG(cut);
+        final double idcg = topicMetrics.getIDCG(cut);
+        final double ndcg = (idcg == 0) ? 0 : dcg / idcg;
 
-                topicMetrics.updateMetrics(relevance, i);
+        // @totalRelevant (R-Prec)
+        processDocuments(topic, innerMap, hits, storedFields, topicMetrics, totalRelevant, cut);
 
-                logger.info("Topic {} - Document{} '{}' with score {}", topic.getId(), relevance == 2 ? "*" : "",
-                        docId, hit.score);
-            }
+        final double rprec = topicMetrics.getP(totalRelevant);
 
-            final double p = topicMetrics.getP(cut);
-            final double rr = topicMetrics.getRR();
-            final double dcg = topicMetrics.getDCG(cut);
-            final double idcg = topicMetrics.getIDCG(cut);
-            final double ndcg = (idcg == 0) ? 0 : dcg / idcg;
+        writer.write(topic.getId() + ";" + ndcg + ";" + rprec + ";" + rr + ";" + p + "\n");
+        meanMetrics.updateMetrics(p, rr, ndcg, rprec);
 
-            writer.write(topic.getId() + ";" + ndcg + ";" + p + ";" + rr + "\n");
-            meanMetrics.updateMetrics(p, rr, ndcg);
+        logger.info("Topic {} - nDCG@{}: {}, RPrec: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, rprec, cut, p,
+                rr);
+    }
 
-            logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);
+    /**
+     * Process the documents retrieved by the query.
+     *
+     * @param topic
+     *            the topic being processed.
+     * @param innerMap
+     *            the relevance judgments.
+     * @param hits
+     *            the documents retrieved.
+     * @param storedFields
+     *            the stored fields.
+     * @param topicMetrics
+     *            the topic metrics calculator.
+     * @param limit
+     *            the limit of documents to process.
+     * @param start
+     *            the start index.
+     */
+    private static void processDocuments(final Topic topic, final Map<String, Integer> innerMap, final TopDocs hits,
+            final StoredFields storedFields, final TopicMetrics topicMetrics, final int limit, final int start)
+            throws IOException {
 
-        } catch (final IOException e) {
-            logger.error("Error searching index - {}", e.getMessage());
-        } catch (final ParseException e) {
-            logger.error("Error parsing query - {}", e.getMessage());
+        for (int i = start; i < limit; i++) {
+
+            final ScoreDoc hit = hits.scoreDocs[i];
+            final String docId = storedFields.document(hit.doc).get("nct_id");
+            final int relevance = innerMap.getOrDefault(docId, 0);
+
+            topicMetrics.updateMetrics(relevance, i);
+
+            logger.info(
+                    "Topic {} {} Document{} '{}' ({}) with score {}", topic.getId(), start == 0 ? "#" : "-",
+                    relevance == 2 ? "*" : " ", docId, relevance, hit.score);
         }
     }
 
+    /**
+     * Build the query for the given topic from the required filters.
+     *
+     * @param topic
+     *            the topic.
+     * @param parser
+     *            the query parser.
+     * @return the query.
+     */
     private static BooleanQuery getQuery(final Topic topic, final QueryParser parser) throws ParseException {
 
         final Query descriptionQuery = parser.parse(QueryParser.escape(topic.getDescription()));
