@@ -1,5 +1,7 @@
 package es.udc.fi.tfg.index;
 
+import static es.udc.fi.tfg.util.Utility.normalizeAge;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -13,6 +15,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleRange;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.StringField;
@@ -131,13 +134,19 @@ public class IndexerThread implements Runnable {
         final String gender = trial.gender();
         final String minAge = trial.minAge();
         final String maxAge = trial.maxAge();
+        final double minAgeNorm = normalizeAge(minAge);
+        final double maxAgeNorm = normalizeAge(maxAge);
+        final double[] minAgeRange = new double[] { minAgeNorm == -1 ? Double.NEGATIVE_INFINITY : minAgeNorm };
+        final double[] maxAgeRange = new double[] { maxAgeNorm == -1 ? Double.POSITIVE_INFINITY : maxAgeNorm };
 
         doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
         doc.add(new StringField("gender", gender == null ? "all" : gender, Field.Store.YES));
         doc.add(new StringField("min_age", minAge == null ? "n/a" : minAge, Field.Store.YES));
         doc.add(new StringField("max_age", maxAge == null ? "n/a" : maxAge, Field.Store.YES));
+        doc.add(new DoubleRange("age_range", minAgeRange, maxAgeRange));
         doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
 
         return doc;
     }
+
 }

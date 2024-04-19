@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.DoubleRange;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import es.udc.fi.tfg.data.Topic;
 import es.udc.fi.tfg.eval.metrics.MeanMetrics;
 import es.udc.fi.tfg.eval.metrics.TopicMetrics;
+import es.udc.fi.tfg.util.Utility;
 
 public class SearchEval {
 
@@ -53,7 +55,7 @@ public class SearchEval {
             final QueryParser parser = new QueryParser("contents", new StandardAnalyzer());
 
             final MeanMetrics meanMetrics = new MeanMetrics();
-            writer.write("id\tnDCG@" + CUT + "\tP@" + CUT + "\tRR\n");
+            writer.write("id;nDCG@" + CUT + ";P@" + CUT + ";RR\n");
 
             for (final Topic topic : topics)
                 processTopic(topic, qrels, parser, searcher, writer, meanMetrics);
@@ -90,22 +92,7 @@ public class SearchEval {
         final Map<String, Integer> innerMap = qrels.get(topic.getId());
 
         try {
-            final Query descriptionQuery = parser.parse(QueryParser.escape(topic.getDescription()));
-
-            // Create the gender filters and combine them.
-            final String genderFilterValue = SearchEvalHelper.getGenderFilterValue(topic.getGender());
-            final Query genderFilter = new TermQuery(new Term("gender", genderFilterValue));
-            final Query allGenderFilter = new TermQuery(new Term("gender", "all"));
-            final BooleanQuery genderBooleanQuery = new BooleanQuery.Builder()
-                    .add(genderFilter, BooleanClause.Occur.SHOULD)
-                    .add(allGenderFilter, BooleanClause.Occur.SHOULD)
-                    .build();
-
-            // Combine the description query and the gender filter.
-            final BooleanQuery query = new BooleanQuery.Builder()
-                    .add(descriptionQuery, BooleanClause.Occur.MUST)
-                    .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
-                    .build();
+            final BooleanQuery query = getQuery(topic, parser);
 
             final TopDocs hits = searcher.search(query, TRIALS_PER_TOPIC);
             final StoredFields storedFields = searcher.storedFields();
@@ -134,15 +121,41 @@ public class SearchEval {
             final double idcg = topicMetrics.getIDCG(cut);
             final double ndcg = (idcg == 0) ? 0 : dcg / idcg;
 
-            writer.write(topic.getId() + "\t" + ndcg + "\t" + p + "\t" + rr + "\n");
+            writer.write(topic.getId() + ";" + ndcg + ";" + p + ";" + rr + "\n");
             meanMetrics.updateMetrics(p, rr, ndcg);
 
             logger.info("Topic {} - nDCG@{}: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, cut, p, rr);
 
-        } catch (final ParseException e) {
-            logger.error("Error parsing query - {}", e.getMessage());
         } catch (final IOException e) {
             logger.error("Error searching index - {}", e.getMessage());
+        } catch (final ParseException e) {
+            logger.error("Error parsing query - {}", e.getMessage());
         }
+    }
+
+    private static BooleanQuery getQuery(final Topic topic, final QueryParser parser) throws ParseException {
+
+        final Query descriptionQuery = parser.parse(QueryParser.escape(topic.getDescription()));
+
+        // Gender filters.
+        final String genderFilterValue = SearchEvalHelper.getGenderFilterValue(topic.getGender());
+        final Query genderFilter = new TermQuery(new Term("gender", genderFilterValue));
+        final Query allGenderFilter = new TermQuery(new Term("gender", "all"));
+        final BooleanQuery genderBooleanQuery = new BooleanQuery.Builder()
+                .add(genderFilter, BooleanClause.Occur.SHOULD)
+                .add(allGenderFilter, BooleanClause.Occur.SHOULD)
+                .build();
+
+        // Age filter.
+        final double[] ageNorm = new double[] { Utility.normalizeAge(topic.getAge()) };
+        final Query ageFilter = DoubleRange.newCrossesQuery("age_range", ageNorm, ageNorm);
+
+        // Combined query.
+        return new BooleanQuery.Builder()
+                .add(descriptionQuery, BooleanClause.Occur.MUST)
+                .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
+                .add(ageFilter, BooleanClause.Occur.FILTER)
+                .build();
+
     }
 }

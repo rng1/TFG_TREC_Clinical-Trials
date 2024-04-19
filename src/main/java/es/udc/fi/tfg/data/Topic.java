@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 public class Topic {
 
-    private final Pattern AGE_PATTERN = Pattern.compile("\\d+-year-old|\\d+-month-old|\\d+-week-old");
+    private final Pattern AGE_PATTERN = Pattern.compile("(\\d+)-(year|month|week)-old");
     private final List<String> GENDER_WORDS = Arrays.asList("male", "man", "boy", "female", "woman", "girl");
 
     private final int id;
@@ -37,7 +37,7 @@ public class Topic {
     private String parseTopicAge(final String description) {
         final Matcher matcher = AGE_PATTERN.matcher(description);
         if (matcher.find()) {
-            return matcher.group();
+            return matcher.group(1) + " " + matcher.group(2);
         }
         return "unknown";
     }
