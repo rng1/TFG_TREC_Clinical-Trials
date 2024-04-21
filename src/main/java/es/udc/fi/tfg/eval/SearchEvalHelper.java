@@ -2,7 +2,7 @@ package es.udc.fi.tfg.eval;
 
 import static es.udc.fi.tfg.util.Parameters.BRANCH_NAME;
 import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
-import static es.udc.fi.tfg.util.Parameters.FILTER;
+import static es.udc.fi.tfg.util.Parameters.USE_QUERY_FILTER;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -99,7 +99,7 @@ public class SearchEvalHelper {
     protected static String getMetricsFileName() {
 
         final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
-        final String filePath = dateTime + "_" + BRANCH_NAME + "_" + (FILTER ? "filtered" : "unfiltered")
+        final String filePath = dateTime + "_" + BRANCH_NAME + "_" + (USE_QUERY_FILTER ? "filtered" : "unfiltered")
                 + "_metrics.csv";
 
         return Paths.get(DOCS_PATH, "metrics", filePath).toString();

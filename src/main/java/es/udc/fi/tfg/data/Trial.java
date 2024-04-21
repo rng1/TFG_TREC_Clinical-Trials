@@ -1,5 +1,7 @@
 package es.udc.fi.tfg.data;
 
+import static es.udc.fi.tfg.util.Parameters.INDEX_KEYWORDS;
+
 import java.util.Collection;
 
 public record Trial(String nctId, String criteria, String gender, String minAge, String maxAge,
@@ -30,7 +32,7 @@ public record Trial(String nctId, String criteria, String gender, String minAge,
             sb.append("admits healthy volunteers: ").append(healthyVolunteers).append("\n");
         }
 
-        if (keywords != null) {
+        if (keywords != null && INDEX_KEYWORDS) {
             sb.append("keywords: ").append(String.join(", ", keywords)).append("\n");
         }
 

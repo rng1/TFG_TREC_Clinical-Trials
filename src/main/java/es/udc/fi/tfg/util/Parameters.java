@@ -15,5 +15,6 @@ public record Parameters() {
 
     public static final Similarity SIMILARITY = new BM25Similarity(1.2f, 0.75f);
 
-    public static boolean FILTER = true;
+    public static boolean USE_QUERY_FILTER = true;
+    public static boolean INDEX_KEYWORDS = true;
 }

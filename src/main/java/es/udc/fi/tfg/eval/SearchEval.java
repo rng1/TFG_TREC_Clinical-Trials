@@ -1,10 +1,10 @@
 package es.udc.fi.tfg.eval;
 
 import static es.udc.fi.tfg.util.Parameters.CUT;
-import static es.udc.fi.tfg.util.Parameters.FILTER;
 import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
 import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
 import static es.udc.fi.tfg.util.Parameters.TRIALS_PER_TOPIC;
+import static es.udc.fi.tfg.util.Parameters.USE_QUERY_FILTER;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -56,7 +56,7 @@ public class SearchEval {
             final QueryParser parser = new QueryParser("contents", new StandardAnalyzer());
 
             final MeanMetrics meanMetrics = new MeanMetrics();
-            writer.write("id;nDCG@" + CUT + ";P@" + CUT + ";RR\n");
+            writer.write("id;nDCG@" + CUT + ";RPrec;P@" + CUT + ";RR\n");
 
             for (final Topic topic : topics)
                 processTopic(topic, qrels, parser, searcher, writer, meanMetrics);
@@ -120,7 +120,7 @@ public class SearchEval {
 
         final double rprec = topicMetrics.getP(totalRelevant);
 
-        writer.write(topic.getId() + ";" + ndcg + ";" + rprec + ";" + rr + ";" + p + "\n");
+        writer.write(topic.getId() + ";" + ndcg + ";" + rprec + ";" + p + ";" + rr + "\n");
         meanMetrics.updateMetrics(p, rr, ndcg, rprec);
 
         logger.info("Topic {} - nDCG@{}: {}, RPrec: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, rprec, cut, p,
@@ -190,7 +190,7 @@ public class SearchEval {
         final Query ageFilter = DoubleRange.newCrossesQuery("age_range", ageNorm, ageNorm);
 
         // Query builder.
-        return FILTER
+        return USE_QUERY_FILTER
                 ? new BooleanQuery.Builder()
                         .add(descriptionQuery, BooleanClause.Occur.MUST)
                         .add(genderBooleanQuery, BooleanClause.Occur.FILTER)
