@@ -1,5 +1,6 @@
 package es.udc.fi.tfg.index;
 
+import static es.udc.fi.tfg.index.IndexerHelper.parseCriteria;
 import static es.udc.fi.tfg.util.Utility.normalizeAge;
 
 import java.io.File;
@@ -29,13 +30,18 @@ import es.udc.fi.tfg.data.Trial;
 public class IndexerThread implements Runnable {
 
     private final File file;
-    private final IndexWriter writer;
+    private final IndexWriter writerIn;
+    private final IndexWriter writerEx;
+    private final IndexWriter writerMain;
 
     private final Logger logger = LoggerFactory.getLogger(IndexerThread.class);
 
-    public IndexerThread(final File file, final IndexWriter writer) {
+    public IndexerThread(final File file, final IndexWriter writerIn, final IndexWriter writerEx,
+            final IndexWriter writerMain) {
         this.file = file;
-        this.writer = writer;
+        this.writerIn = writerIn;
+        this.writerEx = writerEx;
+        this.writerMain = writerMain;
     }
 
     @Override
@@ -49,9 +55,9 @@ public class IndexerThread implements Runnable {
 
         if (trials != null) {
             for (final File trialXml : trials) {
-                logger.info("Processing file '{}'", trialXml.getName());
+                // logger.info("Processing file '{}'", trialXml.getName());
                 final Trial trial = parseXml(trialXml);
-                indexTrial(trial, writer);
+                indexTrial(trial, writerIn, writerEx, writerMain);
             }
         }
 
@@ -67,14 +73,22 @@ public class IndexerThread implements Runnable {
             final XMLStreamReader reader = factory.createXMLStreamReader(new FileInputStream(file));
 
             final List<String> keywords = new ArrayList<>();
+            final List<String> conditions = new ArrayList<>();
 
             boolean isCriteria = false;
+            boolean isSummary = false;
+            boolean isDescription = false;
+
             String nctId = null;
             String gender = null;
             String minAge = null;
             String maxAge = null;
             String healthyVolunteers = null;
-            String criteria = null;
+            String summary = null;
+            String description = null;
+            String briefTitle = null;
+            String officialTitle = null;
+            String[] criteria = null;
 
             while (reader.hasNext()) {
                 final int event = reader.next();
@@ -89,19 +103,33 @@ public class IndexerThread implements Runnable {
                     case "maximum_age" -> maxAge = reader.getElementText().toLowerCase();
                     case "healthy_volunteers" -> healthyVolunteers = reader.getElementText().toLowerCase();
                     case "keyword", "mesh_term" -> keywords.add(reader.getElementText().toLowerCase());
+                    case "condition" -> conditions.add(reader.getElementText().toLowerCase());
+                    case "brief_title" -> briefTitle = reader.getElementText().toLowerCase();
+                    case "official_title" -> officialTitle = reader.getElementText().toLowerCase();
+                    case "brief_summary" -> isSummary = true;
+                    case "detailed_description" -> isDescription = true;
                     case "criteria" -> isCriteria = true;
                     case "textblock" -> {
                         if (isCriteria)
-                            criteria = reader.getElementText().toLowerCase();
+                            criteria = parseCriteria(reader.getElementText().toLowerCase());
+                        if (isSummary)
+                            summary = reader.getElementText().toLowerCase();
+                        if (isDescription)
+                            description = reader.getElementText().toLowerCase();
                     }
                     }
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
                     if (reader.getLocalName().equals("criteria"))
                         isCriteria = false;
+                    if (reader.getLocalName().equals("brief_summary"))
+                        isSummary = false;
+                    if (reader.getLocalName().equals("detailed_description"))
+                        isDescription = false;
                 }
             }
 
-            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers, keywords);
+            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers, keywords, conditions,
+                    briefTitle, officialTitle, summary, description);
 
         } catch (final XMLStreamException e) {
             logger.error("Error reading XML file - {}", e.getMessage());
@@ -112,13 +140,18 @@ public class IndexerThread implements Runnable {
         return null;
     }
 
-    private void indexTrial(final Trial trial, final IndexWriter writer) {
+    private void indexTrial(final Trial trial, final IndexWriter writerIn, final IndexWriter writerEx,
+            final IndexWriter writerMain) {
 
         if (trial != null) {
-            final Document doc = createDocument(trial);
+            final Document docMain = createDocumentMain(trial);
+            final Document docIn = createDocumentIn(trial);
+            final Document docEx = createDocumentEx(trial);
 
             try {
-                writer.addDocument(doc);
+                writerMain.addDocument(docMain);
+                writerIn.addDocument(docIn);
+                writerEx.addDocument(docEx);
             } catch (final IOException e) {
                 logger.error("Error indexing trial - {}", e.getMessage());
             }
@@ -127,7 +160,7 @@ public class IndexerThread implements Runnable {
         }
     }
 
-    private Document createDocument(final Trial trial) {
+    private Document createDocumentMain(final Trial trial) {
 
         final Document doc = new Document();
 
@@ -144,7 +177,27 @@ public class IndexerThread implements Runnable {
         doc.add(new StringField("min_age", minAge == null ? "n/a" : minAge, Field.Store.YES));
         doc.add(new StringField("max_age", maxAge == null ? "n/a" : maxAge, Field.Store.YES));
         doc.add(new DoubleRange("age_range", minAgeRange, maxAgeRange));
-        doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
+        doc.add(new TextField("contents", trial.toString(), Field.Store.YES));
+
+        return doc;
+    }
+
+    private Document createDocumentIn(final Trial trial) {
+
+        final Document doc = new Document();
+
+        doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
+        doc.add(new TextField("contents", trial.getInclusionCriteria(), Field.Store.YES));
+
+        return doc;
+    }
+
+    private Document createDocumentEx(final Trial trial) {
+
+        final Document doc = new Document();
+
+        doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
+        doc.add(new TextField("contents", trial.getExclusionCriteria(), Field.Store.YES));
 
         return doc;
     }

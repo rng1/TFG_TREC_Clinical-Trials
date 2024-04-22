@@ -15,6 +15,13 @@ public record Parameters() {
 
     public static final Similarity SIMILARITY = new BM25Similarity(1.2f, 0.75f);
 
-    public static boolean USE_QUERY_FILTER = true;
+    // Index options
     public static boolean INDEX_KEYWORDS = true;
+
+    // Search options
+    public static boolean USE_QUERY_FILTER = true;
+
+    public static double MAIN_WEIGHT = 0.4;
+    public static double INCLUSION_WEIGHT = 0.4;
+    public static double EXCLUSION_WEIGHT = 0.6;
 }
