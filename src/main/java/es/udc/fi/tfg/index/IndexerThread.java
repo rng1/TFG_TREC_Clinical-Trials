@@ -65,6 +65,13 @@ public class IndexerThread implements Runnable {
 
     }
 
+    /**
+     * Parse a trial from an XML file.
+     *
+     * @param file
+     *            the XML file.
+     * @return the trial.
+     */
     private Trial parseXml(final File file) {
 
         final XMLInputFactory factory = XMLInputFactory.newInstance();
@@ -140,13 +147,25 @@ public class IndexerThread implements Runnable {
         return null;
     }
 
+    /**
+     * Index a trial in the Lucene index.
+     *
+     * @param trial
+     *            the trial to index.
+     * @param writerIn
+     *            the inclusion criteria index writer.
+     * @param writerEx
+     *            the exclusion criteria index writer.
+     * @param writerMain
+     *            the main index writer.
+     */
     private void indexTrial(final Trial trial, final IndexWriter writerIn, final IndexWriter writerEx,
             final IndexWriter writerMain) {
 
         if (trial != null) {
-            final Document docMain = createDocumentMain(trial);
-            final Document docIn = createDocumentIn(trial);
-            final Document docEx = createDocumentEx(trial);
+            final Document docMain = createDocument(trial, "main");
+            final Document docIn = createDocument(trial, "in");
+            final Document docEx = createDocument(trial, "ex");
 
             try {
                 writerMain.addDocument(docMain);
@@ -160,7 +179,16 @@ public class IndexerThread implements Runnable {
         }
     }
 
-    private Document createDocumentMain(final Trial trial) {
+    /**
+     * Create a Lucene document from a trial.
+     *
+     * @param trial
+     *            the trial to index.
+     * @param type
+     *            the index where the document belongs (main, inclusion, exclusion).
+     * @return the Lucene document.
+     */
+    private Document createDocument(final Trial trial, final String type) {
 
         final Document doc = new Document();
 
@@ -177,27 +205,13 @@ public class IndexerThread implements Runnable {
         doc.add(new StringField("min_age", minAge == null ? "n/a" : minAge, Field.Store.YES));
         doc.add(new StringField("max_age", maxAge == null ? "n/a" : maxAge, Field.Store.YES));
         doc.add(new DoubleRange("age_range", minAgeRange, maxAgeRange));
-        doc.add(new TextField("contents", trial.toString(), Field.Store.YES));
 
-        return doc;
-    }
-
-    private Document createDocumentIn(final Trial trial) {
-
-        final Document doc = new Document();
-
-        doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
-        doc.add(new TextField("contents", trial.getInclusionCriteria(), Field.Store.YES));
-
-        return doc;
-    }
-
-    private Document createDocumentEx(final Trial trial) {
-
-        final Document doc = new Document();
-
-        doc.add(new KeywordField("nct_id", trial.nctId(), Field.Store.YES));
-        doc.add(new TextField("contents", trial.getExclusionCriteria(), Field.Store.YES));
+        if (type.equals("main"))
+            doc.add(new TextField("contents", trial.toString(), Field.Store.NO));
+        if (type.equals("in"))
+            doc.add(new TextField("contents", trial.getInclusionCriteria(), Field.Store.NO));
+        if (type.equals("ex"))
+            doc.add(new TextField("contents", trial.getExclusionCriteria(), Field.Store.NO));
 
         return doc;
     }

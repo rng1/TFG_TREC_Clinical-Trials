@@ -107,12 +107,11 @@ public class SearchEval {
         final Map<String, Integer> innerMap = qrels.get(topic.getId());
         final int totalRelevant = (int) innerMap.values().stream().filter(e -> e == 2).count();
 
-        final BooleanQuery mainQuery = getQuery(topic, parser);
-        final Query InExQuery = parser.parse(QueryParser.escape(topic.getDescription()));
+        final BooleanQuery query = getQuery(topic, parser);
 
-        final TopDocs hitsMain = searcherMain.search(mainQuery, TRIALS_PER_TOPIC);
-        final TopDocs hitsIn = searcherIn.search(InExQuery, TRIALS_PER_TOPIC);
-        final TopDocs hitsEx = searcherEx.search(InExQuery, TRIALS_PER_TOPIC);
+        final TopDocs hitsMain = searcherMain.search(query, TRIALS_PER_TOPIC);
+        final TopDocs hitsIn = searcherIn.search(query, TRIALS_PER_TOPIC);
+        final TopDocs hitsEx = searcherEx.search(query, TRIALS_PER_TOPIC);
 
         final StoredFields storedFieldsMain = searcherMain.storedFields();
         final StoredFields storedFieldsIn = searcherIn.storedFields();

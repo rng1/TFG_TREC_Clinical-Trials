@@ -21,7 +21,8 @@ public record Parameters() {
     // Search options
     public static boolean USE_QUERY_FILTER = true;
 
-    public static double MAIN_WEIGHT = 0.4;
-    public static double INCLUSION_WEIGHT = 0.4;
+    // TOPSIS weights
+    public static double MAIN_WEIGHT = 0.2;
+    public static double INCLUSION_WEIGHT = 0.2;
     public static double EXCLUSION_WEIGHT = 0.6;
 }

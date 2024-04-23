@@ -101,6 +101,11 @@ public class SearchEvalHelper {
         return qrelsMap;
     }
 
+    /**
+     * Returns the file name for the metrics file.
+     *
+     * @return the file name for the metrics file.
+     */
     protected static String getMetricsFileName() {
 
         final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
@@ -110,6 +115,13 @@ public class SearchEvalHelper {
         return Paths.get(DOCS_PATH, "metrics", filePath).toString();
     }
 
+    /**
+     * Parse all the possible gender values to "male", "female" or ""(unknown)
+     *
+     * @param gender
+     *            the gender to parse.
+     * @return the parsed gender.
+     */
     protected static String getGenderFilterValue(final String gender) {
         return switch (gender) {
         case "woman", "female", "girl" -> "female";
@@ -118,6 +130,28 @@ public class SearchEvalHelper {
         };
     }
 
+    /**
+     * Performs the TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution) method on the given
+     * TopDocs and StoredFields. This method calculates the evaluation matrix, normalizes it, applies weights to it, and
+     * calculates the ratios. The result is a map where each key is a document ID and the value is the calculated ratio.
+     * The map is sorted in descending order by the ratio values.
+     *
+     * @param hitsMain
+     *            the TopDocs for the main index.
+     * @param hitsIn
+     *            the TopDocs for the inclusion criteria index.
+     * @param hitsEx
+     *            the TopDocs for the exclusion criteria index.
+     * @param storedFieldsMain
+     *            the StoredFields for the main index.
+     * @param storedFieldsIn
+     *            the StoredFields for the inclusion criteria index.
+     * @param storedFieldsEx
+     *            the StoredFields for the exclusion criteria index.
+     * @return a sorted Map where the keys are document IDs and the values are the calculated ratios.
+     * @throws IOException
+     *             if an I/O error occurs.
+     */
     protected static Map<String, Double> performTopsis(final TopDocs hitsMain, final TopDocs hitsIn,
             final TopDocs hitsEx, final StoredFields storedFieldsMain, final StoredFields storedFieldsIn,
             final StoredFields storedFieldsEx) throws IOException {
