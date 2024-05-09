@@ -69,12 +69,15 @@ public class IndexerThread implements Runnable {
             final List<String> keywords = new ArrayList<>();
 
             boolean isCriteria = false;
+            boolean isSummary = false;
+            boolean isDescription = false;
             String nctId = null;
             String gender = null;
             String minAge = null;
             String maxAge = null;
-            String healthyVolunteers = null;
             String criteria = null;
+            String summary = null;
+            String description = null;
 
             while (reader.hasNext()) {
                 final int event = reader.next();
@@ -87,21 +90,30 @@ public class IndexerThread implements Runnable {
                     case "gender" -> gender = reader.getElementText().toLowerCase();
                     case "minimum_age" -> minAge = reader.getElementText().toLowerCase();
                     case "maximum_age" -> maxAge = reader.getElementText().toLowerCase();
-                    case "healthy_volunteers" -> healthyVolunteers = reader.getElementText().toLowerCase();
                     case "keyword", "mesh_term" -> keywords.add(reader.getElementText().toLowerCase());
                     case "criteria" -> isCriteria = true;
+                    case "brief_summary" -> isSummary = true;
+                    case "detailed_description" -> isDescription = true;
                     case "textblock" -> {
                         if (isCriteria)
                             criteria = reader.getElementText().toLowerCase();
+                        if (isSummary)
+                            summary = reader.getElementText().toLowerCase();
+                        if (isDescription)
+                            description = reader.getElementText().toLowerCase();
                     }
                     }
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
                     if (reader.getLocalName().equals("criteria"))
                         isCriteria = false;
+                    if (reader.getLocalName().equals("brief_summary"))
+                        isSummary = false;
+                    if (reader.getLocalName().equals("detailed_description"))
+                        isDescription = false;
                 }
             }
 
-            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers, keywords);
+            return new Trial(nctId, criteria, summary, description, gender, minAge, maxAge, keywords);
 
         } catch (final XMLStreamException e) {
             logger.error("Error reading XML file - {}", e.getMessage());
