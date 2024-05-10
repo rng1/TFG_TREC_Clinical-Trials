@@ -5,8 +5,8 @@ import static es.udc.fi.tfg.util.Parameters.INDEX_KEYWORDS;
 import java.util.Collection;
 
 public record Trial(String nctId, String[] criteria, String gender, String minAge, String maxAge,
-        String healthyVolunteers, Collection<String> keywords, Collection<String> conditions, String briefTitle,
-        String officialTitle, String summary, String description) {
+        Collection<String> keywords, Collection<String> conditions, String briefTitle, String officialTitle,
+        String summary, String description) {
 
     public String getInclusionCriteria() {
         if (criteria == null) {
@@ -53,10 +53,6 @@ public record Trial(String nctId, String[] criteria, String gender, String minAg
 
         if (maxAge != null) {
             sb.append("maximum age: ").append(maxAge).append("\n");
-        }
-
-        if (healthyVolunteers != null) {
-            sb.append("admits healthy volunteers: ").append(healthyVolunteers).append("\n");
         }
 
         if (keywords != null && INDEX_KEYWORDS) {

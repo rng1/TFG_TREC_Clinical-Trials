@@ -1,15 +1,15 @@
 package es.udc.fi.tfg.eval;
 
 import static es.udc.fi.tfg.eval.SearchEvalHelper.performTopsis;
-import static es.udc.fi.tfg.util.Parameters.CUT;
+import static es.udc.fi.tfg.util.Parameters.EVAL_FILENAME;
 import static es.udc.fi.tfg.util.Parameters.INDEX_PATH;
+import static es.udc.fi.tfg.util.Parameters.RUN_NAME;
 import static es.udc.fi.tfg.util.Parameters.SIMILARITY;
 import static es.udc.fi.tfg.util.Parameters.TRIALS_PER_TOPIC;
 import static es.udc.fi.tfg.util.Parameters.USE_QUERY_FILTER;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
@@ -33,8 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import es.udc.fi.tfg.data.Topic;
-import es.udc.fi.tfg.eval.metrics.MeanMetrics;
-import es.udc.fi.tfg.eval.metrics.TopicMetrics;
 import es.udc.fi.tfg.util.Utility;
 
 public class SearchEval {
@@ -43,15 +41,13 @@ public class SearchEval {
 
     public static void main(final String[] args) {
 
-        // Topics and relevance parsing.
+        // Topic parsing.
         final Collection<Topic> topics = SearchEvalHelper.parseTopics();
-        final Map<Integer, Map<String, Integer>> qrels = SearchEvalHelper.parseQrels();
 
         try (final IndexReader readerMain = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH, "I_main")));
                 final IndexReader readerIn = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH, "I_in")));
                 final IndexReader readerEx = DirectoryReader.open(FSDirectory.open(Path.of(INDEX_PATH, "I_ex")));
-                final BufferedWriter writer = new BufferedWriter(
-                        new FileWriter(SearchEvalHelper.getMetricsFileName()))) {
+                final PrintWriter printWriter = new PrintWriter(EVAL_FILENAME)) {
 
             final IndexSearcher searcherMain = new IndexSearcher(readerMain);
             final IndexSearcher searcherIn = new IndexSearcher(readerIn);
@@ -62,14 +58,8 @@ public class SearchEval {
 
             final QueryParser parser = new QueryParser("contents", new StandardAnalyzer());
 
-            final MeanMetrics meanMetrics = new MeanMetrics();
-            writer.write("id;nDCG@" + CUT + ";RPrec;P@" + CUT + ";RR\n");
-
             for (final Topic topic : topics)
-                processTopic(topic, qrels, parser, searcherMain, searcherIn, searcherEx, writer, meanMetrics);
-
-            logger.info("Mean metrics - nDCG: {}, RPrec: {}, P: {}, MRR: {}", meanMetrics.getMnDCG(),
-                    meanMetrics.getMRP(), meanMetrics.getMP(), meanMetrics.getMRR());
+                processTopic(topic, parser, searcherMain, searcherIn, searcherEx, printWriter);
 
         } catch (final IOException e) {
             logger.error("Error handling the index - {}", e.getMessage());
@@ -84,8 +74,6 @@ public class SearchEval {
      *
      * @param topic
      *            the topic to process.
-     * @param qrels
-     *            the relevance judgments.
      * @param parser
      *            the query parser.
      * @param searcherMain
@@ -94,18 +82,12 @@ public class SearchEval {
      *            the inclusion criteria index searcher.
      * @param searcherEx
      *            the exclusion criteria index searcher.
-     * @param meanMetrics
-     *            the mean metrics calculator.
      */
-    private static void processTopic(final Topic topic, final Map<Integer, Map<String, Integer>> qrels,
-            final QueryParser parser, final IndexSearcher searcherMain, final IndexSearcher searcherIn,
-            final IndexSearcher searcherEx, final BufferedWriter writer, final MeanMetrics meanMetrics)
+    private static void processTopic(final Topic topic, final QueryParser parser, final IndexSearcher searcherMain,
+            final IndexSearcher searcherIn, final IndexSearcher searcherEx, final PrintWriter printWriter)
             throws IOException, ParseException {
 
         logger.info("Processing topic {}", topic.getId());
-
-        final Map<String, Integer> innerMap = qrels.get(topic.getId());
-        final int totalRelevant = (int) innerMap.values().stream().filter(e -> e == 2).count();
 
         final BooleanQuery query = getQuery(topic, parser);
 
@@ -120,62 +102,30 @@ public class SearchEval {
         final Map<String, Double> rankedDocs = performTopsis(hitsMain, hitsIn, hitsEx, storedFieldsMain,
                 storedFieldsIn, storedFieldsEx);
 
-        final int retrieved = rankedDocs.size();
-        final int cut = Math.min(retrieved, CUT);
-
-        // Initialize the metrics calculator for the current mainQuery.
-        final TopicMetrics topicMetrics = new TopicMetrics();
-
-        // @cut
-        processDocuments(topic, innerMap, rankedDocs, topicMetrics, cut, 0);
-
-        final double p = topicMetrics.getP(cut);
-        final double rr = topicMetrics.getRR();
-        final double dcg = topicMetrics.getDCG(cut);
-        final double idcg = topicMetrics.getIDCG(cut);
-        final double ndcg = (idcg == 0) ? 0 : dcg / idcg;
-
-        // @totalRelevant (R-Prec)
-        processDocuments(topic, innerMap, rankedDocs, topicMetrics, totalRelevant, cut);
-
-        final double rprec = topicMetrics.getP(totalRelevant);
-
-        writer.write(topic.getId() + ";" + ndcg + ";" + rprec + ";" + p + ";" + rr + "\n");
-        meanMetrics.updateMetrics(p, rr, ndcg, rprec);
-
-        logger.info("Topic {} - nDCG@{}: {}, RPrec: {}, P@{}: {}, RR: {}", topic.getId(), cut, ndcg, rprec, cut, p,
-                rr);
+        processDocuments(topic, rankedDocs, printWriter);
     }
 
     /**
-     * Process the documents for the given topic.
+     * Process the documents for the given topic and print the results in the TREC_EVAL format.
      *
      * @param topic
      *            the topic.
-     * @param innerMap
-     *            the relevance judgments.
      * @param rankedDocs
      *            the ranked documents.
-     * @param topicMetrics
-     *            the topic metrics calculator.
-     * @param limit
-     *            the limit of documents to process.
-     * @param start
-     *            the start index.
+     * @param printWriter
+     *            the print writer.
      */
-    private static void processDocuments(final Topic topic, final Map<String, Integer> innerMap,
-            final Map<String, Double> rankedDocs, final TopicMetrics topicMetrics, final int limit, final int start) {
+    private static void processDocuments(final Topic topic, final Map<String, Double> rankedDocs,
+            final PrintWriter printWriter) {
 
-        for (int i = start; i < limit; i++) {
+        for (int i = 0; i < 1000; i++) {
 
             final String docId = (String) rankedDocs.keySet().toArray()[i];
-            final int relevance = innerMap.getOrDefault(docId, 0);
+            final Double score = rankedDocs.get(docId);
+            printWriter.println(
+                    topic.getId() + " Q0 " + docId.toUpperCase() + " " + (i + 1) + " " + score + " " + RUN_NAME);
 
-            topicMetrics.updateMetrics(relevance, i);
-
-            logger.info(
-                    "Topic {} {} Document{} '{}' ({}) with score {}", topic.getId(), start == 0 ? "#" : "-",
-                    relevance == 2 ? "*" : " ", docId, relevance, rankedDocs.get(docId));
+            logger.info("Topic {} Document {} with score {}", topic.getId(), docId, score);
         }
     }
 

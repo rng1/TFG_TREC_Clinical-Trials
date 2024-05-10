@@ -90,7 +90,6 @@ public class IndexerThread implements Runnable {
             String gender = null;
             String minAge = null;
             String maxAge = null;
-            String healthyVolunteers = null;
             String summary = null;
             String description = null;
             String briefTitle = null;
@@ -108,7 +107,6 @@ public class IndexerThread implements Runnable {
                     case "gender" -> gender = reader.getElementText().toLowerCase();
                     case "minimum_age" -> minAge = reader.getElementText().toLowerCase();
                     case "maximum_age" -> maxAge = reader.getElementText().toLowerCase();
-                    case "healthy_volunteers" -> healthyVolunteers = reader.getElementText().toLowerCase();
                     case "keyword", "mesh_term" -> keywords.add(reader.getElementText().toLowerCase());
                     case "condition" -> conditions.add(reader.getElementText().toLowerCase());
                     case "brief_title" -> briefTitle = reader.getElementText().toLowerCase();
@@ -135,8 +133,8 @@ public class IndexerThread implements Runnable {
                 }
             }
 
-            return new Trial(nctId, criteria, gender, minAge, maxAge, healthyVolunteers, keywords, conditions,
-                    briefTitle, officialTitle, summary, description);
+            return new Trial(nctId, criteria, gender, minAge, maxAge, keywords, conditions, briefTitle, officialTitle,
+                    summary, description);
 
         } catch (final XMLStreamException e) {
             logger.error("Error reading XML file - {}", e.getMessage());

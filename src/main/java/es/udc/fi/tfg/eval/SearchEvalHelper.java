@@ -1,19 +1,12 @@
 package es.udc.fi.tfg.eval;
 
-import static es.udc.fi.tfg.util.Parameters.BRANCH_NAME;
 import static es.udc.fi.tfg.util.Parameters.DOCS_PATH;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -66,53 +59,6 @@ public class SearchEvalHelper {
         }
 
         return topics;
-    }
-
-    /**
-     * Parses the relevance judgments file and returns a map with the relevance of each document for each topic.
-     *
-     * @return a map with the relevance of each document for each topic.
-     */
-    protected static Map<Integer, Map<String, Integer>> parseQrels() {
-
-        final String qrelsPath = DOCS_PATH.concat("/qrels2022.txt");
-
-        final Map<Integer, Map<String, Integer>> qrelsMap = new HashMap<>();
-
-        try {
-            final List<String> allLines = Files.readAllLines(Path.of(qrelsPath));
-
-            for (final String line : allLines) {
-
-                final String[] parts = line.split(" ");
-                final int topicId = Integer.parseInt(parts[0]);
-                final String docId = parts[2].toLowerCase();
-                final int relevance = Integer.parseInt(parts[3]);
-
-                final Map<String, Integer> innerMap = qrelsMap.computeIfAbsent(topicId, k -> new HashMap<>());
-                innerMap.put(docId, relevance);
-
-                qrelsMap.put(topicId, innerMap);
-            }
-        } catch (final IOException e) {
-            logger.error("Error reading file - {}", e.getMessage());
-        }
-
-        return qrelsMap;
-    }
-
-    /**
-     * Returns the file name for the metrics file.
-     *
-     * @return the file name for the metrics file.
-     */
-    protected static String getMetricsFileName() {
-
-        final String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd'T'HHmm"));
-        final String filePath = dateTime + "_" + BRANCH_NAME + "_" + Parameters.MAIN_WEIGHT + "_"
-                + Parameters.INCLUSION_WEIGHT + "_" + Parameters.EXCLUSION_WEIGHT + "_metrics.csv";
-
-        return Paths.get(DOCS_PATH, "metrics", filePath).toString();
     }
 
     /**
